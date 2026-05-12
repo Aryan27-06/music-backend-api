@@ -1,12 +1,19 @@
-const usermodel = require('../models/user.model');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const userModel = require('../models/user.model');
+const { getAuthCookieOptions } = require('../utils/cookie-options');
 
 
 
 const registerUser = async(req, res)=>{
-    const {username, email, password, role='user'} = req.body;
+    const {username, email, password} = req.body;
+
+    if (!username || !email || !password) {
+        return res.status(400).json({
+            message: "Username, email and password are required"
+        });
+    }
+
     const isUserAlreadyExists= await userModel.findOne({
         $or:[
             {username},
@@ -25,15 +32,15 @@ const user = await userModel.create({
     username,
     email,
     password: hash,
-    role
+    role: "user"
 })
 
 const token= jwt.sign({
     id:user._id,
     role:user.role
-}, process.env.JWT_SECRET)
+}, process.env.JWT_SECRET, { expiresIn: "1d" })
  
-res.cookie("token", token)
+res.cookie("token", token, getAuthCookieOptions())
 
     res.status(201).json({
         message:"User Created Successfully",
@@ -50,6 +57,12 @@ res.cookie("token", token)
 
 const loginUser = async (req, res) => {
     const { username, email, password } = req.body;
+
+    if ((!username && !email) || !password) {
+        return res.status(400).json({
+            message: "Username or email and password are required"
+        });
+    }
 
     const user = await userModel.findOne({
         $or: [
@@ -77,10 +90,11 @@ const loginUser = async (req, res) => {
             id: user._id,
             role: user.role
         },
-        process.env.JWT_SECRET
+        process.env.JWT_SECRET,
+        { expiresIn: "1d" }
     );
 
-    res.cookie("token", token);
+    res.cookie("token", token, getAuthCookieOptions());
 
     return res.status(200).json({
         message: "Logged in Successfully",

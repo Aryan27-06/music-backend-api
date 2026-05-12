@@ -8,20 +8,29 @@ const createMusic = async (req, res) => {
   if (!token) {
     return res.status(401).json({ message: "Unauthorized" });
   }
-let decoded;
+
+  let decoded;
   try {
-     decoded = jwt.verify(token, process.env.JWT_SECRET);
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
+  } catch (error) {
+    return res.status(401).json({ message: "Invalid or expired token" });
+  }
 
-    if (decoded.role !== "artist") {
-      return res
-        .status(401)
-        .json({ message: "You dont have access to create a music" });
-    }
+  if (decoded.role !== "artist") {
+    return res
+      .status(403)
+      .json({ message: "You dont have access to this resource" });
+  }
 
+  try {
     const { title } = req.body;
     const file = req.file;
 
-  const result = await uploadFile(file.buffer.toString("base64"));
+    if (!title || !file) {
+      return res.status(400).json({ message: "Title and music file are required" });
+    }
+
+    const result = await uploadFile(file.buffer.toString("base64"));
 
     const music = await musicModel.create({
       title,
